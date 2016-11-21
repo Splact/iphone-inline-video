@@ -60,9 +60,13 @@ function update(timeDiff) {
 	// console.log('update', player.video.readyState, player.video.networkState, player.driver.readyState, player.driver.networkState, player.driver.paused);
 	if (player.video.readyState >= player.video.HAVE_FUTURE_DATA) {
 		if (!player.hasAudio) {
-			player.driver.currentTime = player.video.currentTime + ((timeDiff * player.video.playbackRate) / 1000);
 			if (player.video.loop && isPlayerEnded(player)) {
 				player.driver.currentTime = 0;
+			} else if (player.changeRequest.currentTime > -1) {
+				player.driver.currentTime = player.changeRequest.currentTime;
+				player.changeRequest.currentTime = -1;
+			} else {
+				player.driver.currentTime = player.video.currentTime + ((timeDiff * player.video.playbackRate) / 1000);
 			}
 		}
 		setTime(player.video, player.driver.currentTime);
@@ -157,6 +161,12 @@ function pause(forceEvents) {
 	}
 }
 
+function setCurrentTime(t) {
+	const video = this;
+	const player = video[ಠ];
+	player.changeRequest.currentTime = t;
+}
+
 /**
  * SETUP
  */
@@ -166,6 +176,7 @@ function addPlayer(video, hasAudio) {
 	player.paused = true; // track whether 'pause' events have been fired
 	player.hasAudio = hasAudio;
 	player.video = video;
+	player.changeRequest = {currentTime: -1};
 	player.updater = frameIntervalometer(update.bind(player));
 
 	if (hasAudio) {
@@ -252,6 +263,7 @@ function overloadAPI(video) {
 	video[ಠpause] = video.pause;
 	video.play = play;
 	video.pause = pause;
+	video.setCurrentTime = setCurrentTime;
 	proxyProperty(video, 'paused', player.driver);
 	proxyProperty(video, 'muted', player.driver, true);
 	proxyProperty(video, 'playbackRate', player.driver, true);
